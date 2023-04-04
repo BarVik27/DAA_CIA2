@@ -1,50 +1,62 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def f(x):
-    return 1 + 2*x - x**2
+class Particle:
+    def __init__(self, bounds):
+        self.position = np.random.uniform(bounds[0], bounds[1])
+        self.velocity = np.random.uniform(-1, 1)
+        self.best_position = self.position
+        self.best_fitness = np.inf
 
-def PSO(f, n_particles=50, n_iterations=100, c1=2, c2=2, w=0.7):
-    x_min, x_max = -10, 10
-    particles = np.random.uniform(x_min, x_max, size=(n_particles, 1))
-    velocities = np.zeros((n_particles, 1))
-    best_positions = particles.copy()
-    best_scores = f(best_positions)
-    
-    global_best_position = best_positions[np.argmax(best_scores)]
-    global_best_score = np.max(best_scores)
-    
-    for i in range(n_iterations):
-        r1 = np.random.uniform(size=(n_particles, 1))
-        r2 = np.random.uniform(size=(n_particles, 1))
-        
-        velocities = w * velocities \
-                    + c1 * r1 * (best_positions - particles) \
-                    + c2 * r2 * (global_best_position - particles)
-        particles += velocities
-        particles = np.clip(particles, x_min, x_max)
-        
-        scores = f(particles)
-        improved_indices = scores > best_scores
-        best_positions[improved_indices] = particles[improved_indices]
-        best_scores[improved_indices] = scores[improved_indices]
-        
-        if np.max(best_scores) < global_best_score:
-            global_best_score = np.max(best_scores)
-            global_best_position = best_positions[np.argmax(best_scores)]
-            
-    plt.plot(particles, f(particles), 'bo', label='particles')
-    plt.plot(best_positions, f(best_positions), 'ro', label='best positions')
-    plt.plot(global_best_position, global_best_score, 'go', label='global best')
-    plt.legend()
-    plt.xlim(x_min, x_max)
-    plt.ylim(-100, 100)
-    plt.xlabel('x')
-    plt.ylabel('f(x)')
-    plt.title(f'PSO: x={global_best_position[0]:.2f}, f(x)={global_best_score:.2f}')
-    plt.show()
-        
-    return global_best_position, global_best_score
-    
-best_position, best_score = PSO(f)
-print(f'The maximum of f(x) = 1+2x-x^2 is at x = {best_position[0]:.2f}, with a value of {best_score:.2f}.')
+    def update_position(self):
+        self.position += self.velocity
+
+    def update_velocity(self, w, c1, c2, global_best_position):
+        r1, r2 = np.random.uniform(0, 1, 2)
+        social_component = c1 * r1 * (global_best_position - self.position)
+        cognitive_component = c2 * r2 * (self.best_position - self.position)
+        self.velocity = w * self.velocity + social_component + cognitive_component
+
+    def evaluate_fitness(self):
+        return np.sin(self.position)
+
+    def update_best_position(self):
+        fitness = self.evaluate_fitness()
+        if fitness < self.best_fitness:
+            self.best_position = self.position
+            self.best_fitness = fitness
+
+def run_pso(bounds, num_particles, max_iterations, w, c1, c2):
+    particles = [Particle(bounds) for _ in range(num_particles)]
+    global_best_position = np.inf
+    global_best_fitness = np.inf
+    for i in range(max_iterations):
+        for particle in particles:
+            particle.update_velocity(w, c1, c2, global_best_position)
+            particle.update_position()
+            fitness = particle.evaluate_fitness()
+            if fitness < global_best_fitness:
+                global_best_position = particle.position
+                global_best_fitness = fitness
+            particle.update_best_position()
+        print(f'Iteration {i+1}: Best fitness = {global_best_fitness:.6f}')
+    return global_best_position, global_best_fitness
+
+#parameters
+bounds = [-5, 5]
+num_particles = 20
+max_iterations = 50
+w = 0.729
+c1 = 1.494
+c2 = 1.494
+
+
+best_position, best_fitness = run_pso(bounds, num_particles, max_iterations, w, c1, c2)
+
+#result
+x = np.linspace(bounds[0], bounds[1], 1000)
+y = np.sin(x)
+plt.plot(x, y, label='sin(x)')
+plt.plot(best_position, best_fitness, 'ro', label='Optimum')
+plt.legend()
+plt.show()
