@@ -1,98 +1,87 @@
-import numpy as np
+import random
+import math
 
-# Define parameters
-cities = 10
-population_size = 50
-total_generations = 50
-elite_number = 2
-total_cultures = 5
-total_immigrants = 2
-mutate_prob = 0.02
-crossover_prob = 0.7
 
-# Create distance matrix
-np.random.seed(42)
-distances = np.random.randint(1, 101, size=(cities, cities))
-np.fill_diagonal(distances, 0)
+n = 10
 
-# Define fitness function
-def fitness(individual):
-    return -np.sum([distances[individual[i], individual[(i+1)%cities]] for i in range(cities)])
+distance_matrix = [[0, 12, 3, 23, 1, 5, 23, 56, 12, 11],
+                   [12, 0, 9, 18, 3, 41, 45, 5, 41, 27],
+                   [3, 9, 0, 89, 56, 21, 12, 48, 14, 29],
+                   [23, 18, 89, 0, 87, 46, 75, 17, 50, 42],
+                   [1, 3, 56, 87, 0, 55, 22, 86, 14, 36],
+                   [5, 41, 21, 46, 55, 0, 21, 76, 54, 81],
+                   [23, 45, 12, 75, 22, 21, 0, 11, 57, 48],
+                   [56, 5, 48, 17, 86, 76, 11, 0, 63, 24],
+                   [12, 41, 14, 50, 14, 54, 57, 63, 0, 9],
+                   [11, 27, 29, 42, 36, 81, 48, 24, 9, 0]]
 
-# Define selection function using roulette wheel selection
-def roulette_wheel_selection(population, fitness_value):
-    fitness_sum = np.sum(fitness_value)
-    fitness_prob = fitness_value / fitness_sum
-    cum_prob = np.cumsum(fitness_prob)
-    selected_index = []
-    for i in range(len(population)):
-        val = np.random.rand()
-        for j in range(len(cum_prob)):
-            if val <= cum_prob[j]:
-                selected_index.append(j)
-                break
-    return [population[i] for i in selected_index]
 
-# Define crossover function
-def crossover(parent1, parent2):
-    child = [-1] * cities
-    crossover_point = np.random.randint(1, cities)
-    child[:crossover_point] = parent1[:crossover_point]
-    for i in range(crossover_point, cities):
-        if parent2[i] not in child:
-            child[i] = parent2[i]
-    for i in range(crossover_point):
-        if parent2[i] not in child:
-            for j in range(cities):
-                if child[j] == -1:
-                    child[j] = parent2[i]
-                    break
+culture_count = 5
+culture_pool = []
+for i in range(culture_count):
+    culture_pool.append([random.sample(range(n), n)])
+
+
+population_size = 20
+max_generations = 100
+elite_size = 5
+mutation_rate = 0.1
+
+
+
+def route_distance(route):
+    dist = 0
+    for i in range(n - 1):
+        dist += distance_matrix[route[i]][route[i + 1]]
+    dist += distance_matrix[route[n - 1]][route[0]]
+    return dist
+
+
+
+def evaluate_fitness(solution):
+    return 1 / route_distance(solution)
+
+
+
+def generate_new_solution():
+    parent1 = random.choice(culture_pool)
+    parent2 = random.choice(culture_pool)
+    child = []
+    for i in range(n):
+        if random.random() < 0.5:
+            child.append(parent1[0][i])
+        else:
+            child.append(parent2[0][i])
     return child
 
-# Define mutation function
-def mutate(individual):
-    if np.random.rand() < mutate_prob:
-        i, j = np.random.randint(cities, size=2)
-        individual[i], individual[j] = individual[j], individual[i]
-    return individual
 
-# Initialize populations for each culture
-populations = [[np.random.permutation(cities) for _ in range(population_size)] for _ in range(total_cultures)]
 
-# Start evolution process
-for generation in range(total_generations):
-    elites = []
-    for population in populations:
-        fitness_value = [fitness(individual) for individual in population]
-        elites_index = np.argsort(fitness_value)[-elite_number:]
-        elites.append([population[i] for i in elites_index])
-    # Combine the elites into a single population
-    elite_population = [individual for elite in elites for individual in elite]
-    # Generate immigrants
-    immigrants = [np.random.permutation(cities) for _ in range(total_immigrants)]
-    # Combine the population and immigrants
-    populations = [elite_population] + populations[:-1] + [immigrants]
+def generate_new_population():
+    population = []
+    while len(population) < population_size:
+        solution = generate_new_solution()
+        population.append(solution)
+    return population
+
+
+
+def mutate_solution(solution):
+    for i in range(n):
+        if random.random() < mutation_rate:
+            j = random.randint(0, n - 1)
+            temp = solution[i]
+            solution[i] = solution[j]
+            solution[j] = temp
+    return solution
+
+
+
+def cultural_algorithm():
    
-    # Perform recombination
-    new_populations = []
-    for population in populations:
-        new_population = []
-        while len(new_population) < population_size:
-            fitness_value = [fitness(individual) for individual in population]
-            sele_indi = roulette_wheel_selection(population, fitness_value)
-            individual1, individual2 = sele_indi[:2]
-            child = crossover(individual1, individual2) if np.random.rand() < crossover_prob else individual1
-            new_population.append(mutate(child))
-        new_populations.append(new_population)
-    populations = new_populations
-   
-    # Display the best fitness in each culture
-    for i, population in enumerate(populations):
-        fitness_values = [fitness(individual) for individual in population]
-        print(f"Culture {i}: Best Fitness = {np.max(fitness_values)}")
+    for generation in range(max_generations):
+        print("Generation", generation + 1)
 
-
-all_solutions = [individual for population in populations for individual in population]
-best_solution = max(all_solutions, key=fitness)
-print("Best solution found:", best_solution)
-print("Fitness of the best solution:", fitness(best_solution))
+      
+        fitness_scores = []
+        for solution in culture_pool:
+            fitness_scores
